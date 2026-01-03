@@ -32,6 +32,3 @@ local function createButton(txt, w)
 	s.Thickness = 1.4
 	return b, s
 end
-
--- (โค้ดต่อทั้งหมดเหมือนที่คุณส่งมา)
-
