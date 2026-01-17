@@ -1,0 +1,130 @@
+local P=game:GetService("Players")
+local R=game:GetService("RunService")
+local U=game:GetService("UserInputService")
+local LP=P.LocalPlayer
+
+local Speed,Step,On,Default=16,5,false,16
+local Hum
+
+local function GetHum()
+    local c=LP.Character or LP.CharacterAdded:Wait()
+    return c:WaitForChild("Humanoid")
+end
+Hum=GetHum()
+
+R.Heartbeat:Connect(function()
+    if Hum then
+        Hum.WalkSpeed = On and Speed or Default
+    end
+end)
+
+-- GUI
+local Gui=Instance.new("ScreenGui",LP.PlayerGui)
+Gui.ResetOnSpawn=false
+
+local M=Instance.new("Frame",Gui)
+M.Size=UDim2.new(0,190,0,120)
+M.Position=UDim2.new(0,20,0.5,-60)
+M.BackgroundColor3=Color3.fromRGB(30,30,30)
+M.BorderSizePixel=0
+Instance.new("UICorner",M).CornerRadius=UDim.new(0,10)
+
+local T=Instance.new("TextLabel",M)
+T.Size=UDim2.new(1,-30,0,25)
+T.Position=UDim2.new(0,8,0,0)
+T.Text="Speed"
+T.TextColor3=Color3.new(1,1,1)
+T.BackgroundTransparency=1
+T.TextXAlignment=0
+T.Font=Enum.Font.SourceSansBold
+T.TextSize=16
+
+local F=Instance.new("TextButton",M)
+F.Size=UDim2.new(0,25,0,25)
+F.Position=UDim2.new(1,-27,0,0)
+F.Text="-"
+F.BackgroundColor3=Color3.fromRGB(70,70,70)
+F.TextColor3=Color3.new(1,1,1)
+Instance.new("UICorner",F)
+
+local L=Instance.new("TextLabel",M)
+L.Size=UDim2.new(1,-16,0,25)
+L.Position=UDim2.new(0,8,0,30)
+L.Text="16"
+L.BackgroundColor3=Color3.fromRGB(50,50,50)
+L.TextColor3=Color3.new(1,1,1)
+L.TextSize=14
+Instance.new("UICorner",L)
+
+local TO=Instance.new("TextButton",M)
+TO.Size=UDim2.new(1,-16,0,25)
+TO.Position=UDim2.new(0,8,0,60)
+TO.Text="OFF"
+TO.BackgroundColor3=Color3.fromRGB(120,60,60)
+TO.TextColor3=Color3.new(1,1,1)
+TO.TextSize=14
+Instance.new("UICorner",TO)
+
+local P1=Instance.new("TextButton",M)
+P1.Size=UDim2.new(0.5,-10,0,25)
+P1.Position=UDim2.new(0,8,0,90)
+P1.Text="(("
+P1.BackgroundColor3=Color3.fromRGB(0,170,255)
+P1.TextColor3=Color3.new(1,1,1)
+Instance.new("UICorner",P1)
+
+local M1=Instance.new("TextButton",M)
+M1.Size=UDim2.new(0.5,-10,0,25)
+M1.Position=UDim2.new(0.5,2,0,90)
+M1.Text="))"
+M1.BackgroundColor3=Color3.fromRGB(255,100,100)
+M1.TextColor3=Color3.new(1,1,1)
+Instance.new("UICorner",M1)
+
+-- Logic
+P1.MouseButton1Click:Connect(function()
+    Speed+=Step
+    L.Text=Speed
+end)
+
+M1.MouseButton1Click:Connect(function()
+    Speed=math.max(1,Speed-Step)
+    L.Text=Speed
+end)
+
+TO.MouseButton1Click:Connect(function()
+    On=not On
+    TO.Text=On and "ON" or "OFF"
+    TO.BackgroundColor3=On and Color3.fromRGB(60,150,60) or Color3.fromRGB(120,60,60)
+end)
+
+local Fold=false
+F.MouseButton1Click:Connect(function()
+    Fold=not Fold
+    L.Visible,TO.Visible,P1.Visible,M1.Visible=not Fold,not Fold,not Fold,not Fold
+    M.Size=Fold and UDim2.new(0,190,0,25) or UDim2.new(0,190,0,120)
+    F.Text=Fold and "+" or "-"
+end)
+
+-- Drag (Mouse + Touch)
+local D,S,SP=false
+M.InputBegan:Connect(function(i)
+    if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then
+        D=true S=i.Position SP=M.Position
+    end
+end)
+M.InputEnded:Connect(function(i)
+    if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then
+        D=false
+    end
+end)
+U.InputChanged:Connect(function(i)
+    if D and (i.UserInputType==Enum.UserInputType.MouseMovement or i.UserInputType==Enum.UserInputType.Touch) then
+        local d=i.Position-S
+        M.Position=UDim2.new(SP.X.Scale,SP.X.Offset+d.X,SP.Y.Scale,SP.Y.Offset+d.Y)
+    end
+end)
+
+LP.CharacterAdded:Connect(function()
+    Hum=GetHum()
+end)
