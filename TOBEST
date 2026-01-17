@@ -94,7 +94,7 @@ local function setupLight(char)
 	local l = Instance.new("PointLight", hrp)
 	l.Name = "PlayerLight"
 	l.Brightness = 2
-	l.Range = 22
+	l.Range = 90
 	l.Enabled = LightOn
 end
 
