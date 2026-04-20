@@ -1,23 +1,37 @@
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
+local Camera = workspace.CurrentCamera
+
+-- 🌈 Rainbow
+local function rainbowText(label)
+    task.spawn(function()
+        while label and label.Parent do
+            for i = 0,1,0.01 do
+                label.TextColor3 = Color3.fromHSV(i,1,1)
+                task.wait()
+            end
+        end
+    end)
+end
 
 -- GUI
 local gui = Instance.new("ScreenGui", game.CoreGui)
-gui.Name = "TP_VIEW_PRO"
+gui.Name = "TP_FINAL"
 
 local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 220, 0, 270)
+frame.Size = UDim2.new(0, 220, 0, 330)
 frame.Position = UDim2.new(0.05, 0, 0.3, 0)
 frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
 frame.Active = true
 frame.Draggable = true
 
--- ปุ่มพับ
+-- Toggle
 local toggleBtn = Instance.new("TextButton", gui)
 toggleBtn.Size = UDim2.new(0,45,0,25)
 toggleBtn.Position = UDim2.new(0.05,0,0.25,0)
 toggleBtn.Text = "ซ่อน"
+rainbowText(toggleBtn)
 
 toggleBtn.MouseButton1Click:Connect(function()
     frame.Visible = not frame.Visible
@@ -27,219 +41,176 @@ end)
 -- Title
 local title = Instance.new("TextLabel", frame)
 title.Size = UDim2.new(1,0,0,25)
-title.Text = "TP + VIEW PRO 🌈"
+title.Text = "TP GOD 🌈"
 title.BackgroundColor3 = Color3.fromRGB(45,45,45)
 title.TextScaled = true
+rainbowText(title)
 
--- ปิด
+-- Close
 local closeBtn = Instance.new("TextButton", frame)
 closeBtn.Size = UDim2.new(0,25,0,25)
 closeBtn.Position = UDim2.new(1,-25,0,0)
 closeBtn.Text = "X"
+rainbowText(closeBtn)
+
 closeBtn.MouseButton1Click:Connect(function()
     gui:Destroy()
 end)
 
--- ช่องชื่อ
+-- Name
 local textbox = Instance.new("TextBox", frame)
 textbox.Size = UDim2.new(1,-10,0,25)
 textbox.Position = UDim2.new(0,5,0,30)
 textbox.PlaceholderText = "ชื่อผู้เล่น"
 textbox.TextScaled = true
 
--- ระยะวาป
+-- Distance
 local distanceBox = Instance.new("TextBox", frame)
 distanceBox.Size = UDim2.new(1,-10,0,25)
 distanceBox.Position = UDim2.new(0,5,0,60)
-distanceBox.PlaceholderText = "ระยะ (3)"
 distanceBox.Text = "3"
 distanceBox.TextScaled = true
 
--- ปุ่มวาป
+-- Direction
+local direction = "หลัง"
+local dirs = {"หน้า","หลัง","ซ้าย","ขวา","บน","ล่าง"}
+local index = 2
+
+local dirBtn = Instance.new("TextButton", frame)
+dirBtn.Size = UDim2.new(1,-10,0,25)
+dirBtn.Position = UDim2.new(0,5,0,90)
+dirBtn.Text = "ทิศ: หลัง"
+rainbowText(dirBtn)
+
+dirBtn.MouseButton1Click:Connect(function()
+    index += 1
+    if index > #dirs then index = 1 end
+    direction = dirs[index]
+    dirBtn.Text = "ทิศ: " .. direction
+end)
+
+-- TP
 local tpBtn = Instance.new("TextButton", frame)
 tpBtn.Size = UDim2.new(1,-10,0,25)
-tpBtn.Position = UDim2.new(0,5,0,90)
-tpBtn.Text = "วาปไปหา"
+tpBtn.Position = UDim2.new(0,5,0,120)
+tpBtn.Text = "วาป"
+rainbowText(tpBtn)
 
--- วาปตาม
-local followTPBtn = Instance.new("TextButton", frame)
-followTPBtn.Size = UDim2.new(1,-10,0,25)
-followTPBtn.Position = UDim2.new(0,5,0,120)
-followTPBtn.Text = "วาปตาม: ปิด"
+-- Follow
+local followBtn = Instance.new("TextButton", frame)
+followBtn.Size = UDim2.new(1,-10,0,25)
+followBtn.Position = UDim2.new(0,5,0,150)
+followBtn.Text = "ตาม: ปิด"
+rainbowText(followBtn)
 
--- ดูผู้เล่น
-local viewBtn = Instance.new("TextButton", frame)
-viewBtn.Size = UDim2.new(1,-10,0,25)
-viewBtn.Position = UDim2.new(0,5,0,150)
-viewBtn.Text = "ดูผู้เล่น"
+-- 👁 Spectate
+local specBtn = Instance.new("TextButton", frame)
+specBtn.Size = UDim2.new(1,-10,0,25)
+specBtn.Position = UDim2.new(0,5,0,180)
+specBtn.Text = "ดู: ปิด"
+rainbowText(specBtn)
 
--- รายชื่อ
+-- List
 local scrolling = Instance.new("ScrollingFrame", frame)
-scrolling.Size = UDim2.new(1,-10,1,-180)
-scrolling.Position = UDim2.new(0,5,0,180)
+scrolling.Size = UDim2.new(1,-10,1,-210)
+scrolling.Position = UDim2.new(0,5,0,210)
 scrolling.ScrollBarThickness = 4
 
 local layout = Instance.new("UIListLayout", scrolling)
 
--- กล้อง
-local camera = workspace.CurrentCamera
+-- Offset
+local function getOffsetCFrame(hrp)
+    local d = tonumber(distanceBox.Text) or 3
 
--- สถานะ
-local followingTP = false
-local spectating = false
-local targetPlayer = nil
-
--- 🌈 Rainbow
-local hue = 0
-RunService.RenderStepped:Connect(function()
-    hue = (hue + 0.005) % 1
-    local color = Color3.fromHSV(hue,1,1)
-
-    for _,v in pairs(gui:GetDescendants()) do
-        if v:IsA("TextLabel") or v:IsA("TextButton") then
-            v.TextColor3 = color
-        end
-    end
-end)
-
--- ระยะ
-local function getOffset(hrp)
-    local dist = tonumber(distanceBox.Text) or 3
-    return hrp.CFrame * CFrame.new(0,0,dist)
-end
-
--- วาป
-local function teleport(plr)
-    if not plr then return end
-
-    local char = plr.Character
-    local myChar = LocalPlayer.Character
-
-    if char and myChar then
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        local myHRP = myChar:FindFirstChild("HumanoidRootPart")
-
-        if hrp and myHRP then
-            myHRP.CFrame = getOffset(hrp)
-        end
+    if direction == "หน้า" then
+        return hrp.CFrame * CFrame.new(0,0,-d)
+    elseif direction == "หลัง" then
+        return hrp.CFrame * CFrame.new(0,0,d)
+    elseif direction == "ซ้าย" then
+        return hrp.CFrame * CFrame.new(-d,0,0)
+    elseif direction == "ขวา" then
+        return hrp.CFrame * CFrame.new(d,0,0)
+    elseif direction == "บน" then
+        return hrp.CFrame * CFrame.new(0,d,0)
+    elseif direction == "ล่าง" then
+        return hrp.CFrame * CFrame.new(0,-d,0)
     end
 end
 
--- Spectate
-local function resetCam()
-    if LocalPlayer.Character then
-        camera.CameraSubject = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-    end
-    spectating = false
-end
-
-local function spectate(plr)
-    if not plr then return end
-
-    local char = plr.Character
-    if char then
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if hum then
-            camera.CameraSubject = hum
-            spectating = true
-
-            -- กันค้างตอนตาย
-            hum.Died:Connect(function()
-                resetCam()
-            end)
-        end
+-- TP
+local function tp(plr)
+    if plr and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+        LocalPlayer.Character.HumanoidRootPart.CFrame =
+            getOffsetCFrame(plr.Character.HumanoidRootPart)
     end
 end
 
--- Auto เกิดใหม่
-local function setupCharacter(plr)
-    plr.CharacterAdded:Connect(function(char)
-        local hum = char:WaitForChild("Humanoid", 5)
-
-        if spectating and plr == targetPlayer and hum then
-            camera.CameraSubject = hum
-        end
-
-        if followingTP and plr == targetPlayer then
-            task.wait(0.2)
-            teleport(plr)
-        end
-    end)
-end
-
--- ปุ่มต่างๆ
 tpBtn.MouseButton1Click:Connect(function()
-    targetPlayer = Players:FindFirstChild(textbox.Text)
-    teleport(targetPlayer)
+    tp(Players:FindFirstChild(textbox.Text))
 end)
 
-followTPBtn.MouseButton1Click:Connect(function()
-    followingTP = not followingTP
-    followTPBtn.Text = "วาปตาม: " .. (followingTP and "เปิด" or "ปิด")
+-- Follow
+local following = false
+followBtn.MouseButton1Click:Connect(function()
+    following = not following
+    followBtn.Text = "ตาม: " .. (following and "เปิด" or "ปิด")
 end)
 
-viewBtn.MouseButton1Click:Connect(function()
-    if spectating then
-        resetCam()
-    else
-        targetPlayer = Players:FindFirstChild(textbox.Text)
-        spectate(targetPlayer)
-    end
-end)
-
--- Loop หลัก (ลื่น + ไม่ค้าง)
 RunService.RenderStepped:Connect(function()
-    if targetPlayer then
-        local char = targetPlayer.Character
-        local hrp = char and char:FindFirstChild("HumanoidRootPart")
-
-        if followingTP and hrp then
-            teleport(targetPlayer)
+    if following then
+        local t = Players:FindFirstChild(textbox.Text)
+        if t and t.Character and t.Character:FindFirstChild("HumanoidRootPart") then
+            LocalPlayer.Character.HumanoidRootPart.CFrame =
+                getOffsetCFrame(t.Character.HumanoidRootPart)
         end
     end
 end)
 
--- โหลดรายชื่อ
-local function loadPlayers()
-    for _,v in pairs(scrolling:GetChildren()) do
-        if v:IsA("TextButton") then
-            v:Destroy()
+-- 👁 Spectate
+local spectating = false
+
+specBtn.MouseButton1Click:Connect(function()
+    spectating = not spectating
+    specBtn.Text = "ดู: " .. (spectating and "เปิด" or "ปิด")
+
+    if not spectating then
+        Camera.CameraSubject = LocalPlayer.Character
+    end
+end)
+
+RunService.RenderStepped:Connect(function()
+    if spectating then
+        local t = Players:FindFirstChild(textbox.Text)
+        if t and t.Character and t.Character:FindFirstChild("Humanoid") then
+            Camera.CameraSubject = t.Character.Humanoid
         end
     end
+end)
 
-    for _,plr in pairs(Players:GetPlayers()) do
+-- Load players
+local function loadPlayers()
+    for _,v in ipairs(scrolling:GetChildren()) do
+        if v:IsA("TextButton") then v:Destroy() end
+    end
+
+    for _,plr in ipairs(Players:GetPlayers()) do
         local btn = Instance.new("TextButton")
         btn.Size = UDim2.new(1,0,0,25)
         btn.Text = plr.Name
         btn.TextScaled = true
         btn.Parent = scrolling
+        rainbowText(btn)
 
         btn.MouseButton1Click:Connect(function()
             textbox.Text = plr.Name
-            targetPlayer = plr
         end)
     end
 
-    task.wait()
+    task.wait(0.1)
     scrolling.CanvasSize = UDim2.new(0,0,0,layout.AbsoluteContentSize.Y)
 end
 
--- Setup
-for _,plr in pairs(Players:GetPlayers()) do
-    setupCharacter(plr)
-end
-
-Players.PlayerAdded:Connect(function(plr)
-    setupCharacter(plr)
-    loadPlayers()
-end)
-
-Players.PlayerRemoving:Connect(function(plr)
-    if targetPlayer == plr then
-        resetCam()
-        targetPlayer = nil
-    end
-    loadPlayers()
-end)
+Players.PlayerAdded:Connect(loadPlayers)
+Players.PlayerRemoving:Connect(loadPlayers)
 
 loadPlayers()
