@@ -1,1 +1,675 @@
+-- โหลด Rayfield UI Library
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
+-- สร้างหน้าต่างหลัก (Window)
+local Window = Rayfield:CreateWindow({
+   Name = "Multi-Function & Utility Hub",
+   LoadingTitle = "กำลังโหลดระบบ...",
+   LoadingSubtitle = "by Assistant",
+   ConfigurationSaving = {
+      Enabled = false,
+   },
+   KeySystem = false
+})
+
+--------------------------------------------------------------------------------
+-- ตัวแปรตั้งค่าระบบ (Services & Variables)
+--------------------------------------------------------------------------------
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Lighting = game:GetService("Lighting")
+local LocalPlayer = Players.LocalPlayer
+
+-- ค่าการปรับแต่ง Hitbox
+local HitboxSettings = {
+   PlayerEnabled = false,
+   MobEnabled = false,
+   Size = 10,
+   Transparency = 0.5
+}
+
+-- ค่าการปรับแต่ง ESP
+local ESPSettings = {
+   Players = false,
+   Mobs = false,
+   Items = false
+}
+
+-- ค่าการปรับแต่ง Player
+local PlayerSettings = {
+   WalkSpeed = 16,
+   JumpPower = 50,
+   Noclip = false,
+   Godmode = false
+}
+
+-- ตัวแปรสำหรับระบบ Teleport (หมวดหมู่ที่ 3)
+local SavedPositions = {}
+local WarpNameInput = ""
+
+-- ตัวแปรสำหรับ Auto Walk
+local Waypoints = {}
+local IsRecording = false
+local IsPlaying = false
+
+-- ตัวแปรสำหรับ Utility (Boat Speed / Water Walk / Always Morning)
+local SPEED = 130
+local BOAT_ENABLED = false
+local boatConnection = nil
+
+local MORNING_TIME = 8
+local MORNING_ENABLED = false
+local morningConnection = nil
+
+local WATER_WALK_ENABLED = false
+local waterWalkConnection = nil
+local waterPart = nil
+
+-- ฟังก์ชันช่วยหาที่นั่งเรือ
+local function getSeat()
+   if not LocalPlayer.Character then return nil end
+   local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+   if hum and hum.SeatPart and hum.SeatPart:IsA("VehicleSeat") then
+      return hum.SeatPart
+   end
+   return nil
+end
+
+--------------------------------------------------------------------------------
+-- หมวดหมู่ที่ 1: Hitbox Expansion
+--------------------------------------------------------------------------------
+local TabHitbox = Window:CreateTab("Hitbox", 4483362458)
+
+TabHitbox:CreateSection("ตั้งค่า Hitbox")
+
+local function ResetPlayerHitboxes()
+   for _, player in pairs(Players:GetPlayers()) do
+      if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+         local hrp = player.Character.HumanoidRootPart
+         hrp.Size = Vector3.new(1.5, 2, 1.2)
+         hrp.Transparency = 1
+         hrp.BrickColor = BrickColor.new("Medium stone grey")
+         hrp.Material = Enum.Material.SmoothPlastic
+         hrp.CanCollide = false
+      end
+   end
+end
+
+local function ResetMobHitboxes()
+   for _, obj in pairs(workspace:GetChildren()) do
+      if obj:FindFirstChild("Humanoid") and not Players:GetPlayerFromCharacter(obj) then
+         local hrp = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso")
+         if hrp then
+            hrp.Size = Vector3.new(1.5, 2, 1.2)
+            hrp.Transparency = 1
+            hrp.BrickColor = BrickColor.new("Medium stone grey")
+            hrp.Material = Enum.Material.SmoothPlastic
+            hrp.CanCollide = false
+         end
+      end
+   end
+end
+
+TabHitbox:CreateToggle({
+   Name = "ขยาย Hitbox ผู้เล่นทุกคน",
+   CurrentValue = false,
+   Callback = function(Value)
+      HitboxSettings.PlayerEnabled = Value
+      if not Value then
+         ResetPlayerHitboxes()
+      end
+   end,
+})
+
+TabHitbox:CreateToggle({
+   Name = "ขยาย Hitbox มอนสเตอร์ทุกตัว",
+   CurrentValue = false,
+   Callback = function(Value)
+      HitboxSettings.MobEnabled = Value
+      if not Value then
+         ResetMobHitboxes()
+      end
+   end,
+})
+
+TabHitbox:CreateSlider({
+   Name = "ขนาด Hitbox",
+   Range = {2, 50},
+   Increment = 1,
+   Suffix = " Studs",
+   CurrentValue = 10,
+   Callback = function(Value)
+      HitboxSettings.Size = Value
+   end,
+})
+
+TabHitbox:CreateSlider({
+   Name = "ความโปร่งใส (Transparency)",
+   Range = {0, 1},
+   Increment = 0.1,
+   Suffix = "",
+   CurrentValue = 0.5,
+   Callback = function(Value)
+      HitboxSettings.Transparency = Value
+   end,
+})
+
+RunService.RenderStepped:Connect(function()
+   if HitboxSettings.PlayerEnabled then
+      for _, player in pairs(Players:GetPlayers()) do
+         if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local hrp = player.Character.HumanoidRootPart
+            hrp.Size = Vector3.new(HitboxSettings.Size, HitboxSettings.Size, HitboxSettings.Size)
+            hrp.Transparency = HitboxSettings.Transparency
+            hrp.BrickColor = BrickColor.new("Really blue")
+            hrp.Material = Enum.Material.Forcefield
+            hrp.CanCollide = false
+         end
+      end
+   end
+
+   if HitboxSettings.MobEnabled then
+      for _, obj in pairs(workspace:GetChildren()) do
+         if obj:FindFirstChild("Humanoid") and not Players:GetPlayerFromCharacter(obj) then
+            local hrp = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso")
+            if hrp then
+               hrp.Size = Vector3.new(HitboxSettings.Size, HitboxSettings.Size, HitboxSettings.Size)
+               hrp.Transparency = HitboxSettings.Transparency
+               hrp.BrickColor = BrickColor.new("Really red")
+               hrp.Material = Enum.Material.Forcefield
+               hrp.CanCollide = false
+            end
+         end
+      end
+   end
+end)
+
+--------------------------------------------------------------------------------
+-- หมวดหมู่ที่ 2: ESP
+--------------------------------------------------------------------------------
+local TabESP = Window:CreateTab("ESP", 4483362458)
+
+TabESP:CreateSection("ระบบเปิด/ปิด ESP")
+
+TabESP:CreateToggle({
+   Name = "ESP ผู้เล่น (สีเขียว)",
+   CurrentValue = false,
+   Callback = function(Value)
+      ESPSettings.Players = Value
+   end,
+})
+
+TabESP:CreateToggle({
+   Name = "ESP มอนสเตอร์ (สีแดง)",
+   CurrentValue = false,
+   Callback = function(Value)
+      ESPSettings.Mobs = Value
+   end,
+})
+
+TabESP:CreateToggle({
+   Name = "ESP ไอเทม (สีเหลือง)",
+   CurrentValue = false,
+   Callback = function(Value)
+      ESPSettings.Items = Value
+   end,
+})
+
+local function CreateHighlight(target, color, name)
+   if not target:FindFirstChild(name) then
+      local highlight = Instance.new("Highlight")
+      highlight.Name = name
+      highlight.FillColor = color
+      highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+      highlight.FillTransparency = 0.5
+      highlight.OutlineTransparency = 0
+      highlight.Parent = target
+   end
+end
+
+local function RemoveHighlight(target, name)
+   if target:FindFirstChild(name) then
+      target[name]:Destroy()
+   end
+end
+
+RunService.RenderStepped:Connect(function()
+   for _, player in pairs(Players:GetPlayers()) do
+      if player ~= LocalPlayer and player.Character then
+         if ESPSettings.Players then
+            CreateHighlight(player.Character, Color3.fromRGB(0, 255, 0), "PlayerESP")
+         else
+            RemoveHighlight(player.Character, "PlayerESP")
+         end
+      end
+   end
+
+   for _, obj in pairs(workspace:GetChildren()) do
+      if obj:FindFirstChild("Humanoid") and not Players:GetPlayerFromCharacter(obj) then
+         if ESPSettings.Mobs then
+            CreateHighlight(obj, Color3.fromRGB(255, 0, 0), "MobESP")
+         else
+            RemoveHighlight(obj, "MobESP")
+         end
+      end
+   end
+
+   for _, obj in pairs(workspace:GetChildren()) do
+      if obj:IsA("Tool") or obj:IsA("Handle") then
+         if ESPSettings.Items then
+            CreateHighlight(obj, Color3.fromRGB(255, 255, 0), "ItemESP")
+         else
+            RemoveHighlight(obj, "ItemESP")
+         end
+      end
+   end
+end)
+
+--------------------------------------------------------------------------------
+-- หมวดหมู่ที่ 3: เมนูผู้เล่น & ระบบจุดวาป (Player & Teleport)
+--------------------------------------------------------------------------------
+local TabPlayer = Window:CreateTab("Player & Teleport", 4483362458)
+
+TabPlayer:CreateSection("ระบบวาร์ป (Teleport Manager)")
+
+TabPlayer:CreateInput({
+   Name = "ตั้งชื่อจุดวาป",
+   PlaceholderText = "พิมพ์ชื่อจุดวาปที่นี่...",
+   RemoveTextAfterFocusLost = false,
+   Callback = function(Text)
+      WarpNameInput = Text
+   end,
+})
+
+TabPlayer:CreateButton({
+   Name = "📍 บันทึกจุดวาปปัจจุบัน",
+   Callback = function()
+      local name = WarpNameInput:gsub("^%s*(.-)%s*$", "%1")
+      if name == "" then
+         name = "จุดวาป_" .. tostring(#SavedPositions + 1)
+      end
+
+      -- เช็คชื่อซ้ำ
+      for _, warp in ipairs(SavedPositions) do
+         if warp.Name == name then
+            Rayfield:Notify({
+               Title = "แจ้งเตือน",
+               Content = "ชื่อจุดวาปนี้มีอยู่แล้ว!",
+               Duration = 2,
+               Image = 4483362458,
+            })
+            return
+         end
+      end
+
+      local char = LocalPlayer.Character
+      local hrp = char and char:FindFirstChild("HumanoidRootPart")
+
+      if hrp then
+         local savedCFrame = hrp.CFrame
+         local warpData = { Name = name, CFrame = savedCFrame }
+         table.insert(SavedPositions, warpData)
+
+         -- สร้างปุ่มวาป
+         local warpBtn
+         warpBtn = TabPlayer:CreateButton({
+            Name = "🚀 วาปไป: " .. name,
+            Callback = function()
+               local c = LocalPlayer.Character
+               local root = c and c:FindFirstChild("HumanoidRootPart")
+               if root then
+                  root.CFrame = savedCFrame
+               end
+            end,
+         })
+
+         -- สร้างปุ่มลบจุดวาป
+         local delBtn
+         delBtn = TabPlayer:CreateButton({
+            Name = "❌ ลบจุดวาป: " .. name,
+            Callback = function()
+               -- ลบออกจากตาราง
+               for i, v in ipairs(SavedPositions) do
+                  if v.Name == name then
+                     table.remove(SavedPositions, i)
+                     break
+                  end
+               end
+               -- ซ่อนปุ่มออกจาก UI
+               if warpBtn then warpBtn:Destroy() end
+               if delBtn then delBtn:Destroy() end
+
+               Rayfield:Notify({
+                  Title = "Teleport",
+                  Content = "ลบจุดวาป " .. name .. " เรียบร้อยแล้ว",
+                  Duration = 2,
+                  Image = 4483362458,
+               })
+            end,
+         })
+
+         Rayfield:Notify({
+            Title = "Teleport",
+            Content = "บันทึกจุดวาป: " .. name .. " สำเร็จ!",
+            Duration = 2,
+            Image = 4483362458,
+         })
+      end
+   end,
+})
+
+TabPlayer:CreateSection("ระบบป้องกัน")
+
+TabPlayer:CreateToggle({
+   Name = "ระบบกันตาย (Godmode)",
+   CurrentValue = false,
+   Callback = function(Value)
+      PlayerSettings.Godmode = Value
+   end,
+})
+
+TabPlayer:CreateSection("ปรับแต่งตัวละคร")
+
+TabPlayer:CreateSlider({
+   Name = "ความเร็วการเดิน (WalkSpeed)",
+   Range = {16, 200},
+   Increment = 1,
+   Suffix = " Speed",
+   CurrentValue = 16,
+   Callback = function(Value)
+      PlayerSettings.WalkSpeed = Value
+      if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+         LocalPlayer.Character.Humanoid.WalkSpeed = Value
+      end
+   end,
+})
+
+TabPlayer:CreateSlider({
+   Name = "แรงกระโดด (JumpPower)",
+   Range = {50, 300},
+   Increment = 5,
+   Suffix = " Power",
+   CurrentValue = 50,
+   Callback = function(Value)
+      PlayerSettings.JumpPower = Value
+      if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+         LocalPlayer.Character.Humanoid.UseJumpPower = true
+         LocalPlayer.Character.Humanoid.JumpPower = Value
+      end
+   end,
+})
+
+TabPlayer:CreateToggle({
+   Name = "เดินทะลุกำแพง (Noclip)",
+   CurrentValue = false,
+   Callback = function(Value)
+      PlayerSettings.Noclip = Value
+   end,
+})
+
+RunService.Stepped:Connect(function()
+   if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+      local humanoid = LocalPlayer.Character.Humanoid
+
+      if PlayerSettings.Noclip then
+         for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+            if part:IsA("BasePart") and part.CanCollide then
+               part.CanCollide = false
+            end
+         end
+      end
+
+      if PlayerSettings.Godmode then
+         humanoid.Health = humanoid.MaxHealth
+         humanoid:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+      else
+         humanoid:SetStateEnabled(Enum.HumanoidStateType.Dead, true)
+      end
+   end
+end)
+
+--------------------------------------------------------------------------------
+-- หมวดหมู่ที่ 4: การเดินอัตโนมัติ (Auto Walk)
+--------------------------------------------------------------------------------
+local TabAutoWalk = Window:CreateTab("การเดินอัตโนมัติ", 4483362458)
+
+TabAutoWalk:CreateSection("ระบบบันทึกและเดินอัตโนมัติ")
+
+TabAutoWalk:CreateToggle({
+   Name = "🔴 บันทึกการเดิน (Record Path)",
+   CurrentValue = false,
+   Flag = "RecordToggle",
+   Callback = function(Value)
+      IsRecording = Value
+      if IsRecording then
+         Waypoints = {}
+         Rayfield:Notify({
+            Title = "Path Recorder",
+            Content = "เริ่มบันทึกเส้นทางแล้ว...",
+            Duration = 2,
+            Image = 4483362458,
+         })
+         
+         task.spawn(function()
+            while IsRecording do
+               local char = LocalPlayer.Character
+               if char and char:FindFirstChild("HumanoidRootPart") then
+                  table.insert(Waypoints, char.HumanoidRootPart.Position)
+               end
+               task.wait(0.3)
+            end
+         end)
+      else
+         Rayfield:Notify({
+            Title = "Path Recorder",
+            Content = "หยุดบันทึก! ได้จุดเดินทั้งหมด " .. #Waypoints .. " จุด",
+            Duration = 3,
+            Image = 4483362458,
+         })
+      end
+   end,
+})
+
+TabAutoWalk:CreateToggle({
+   Name = "▶️ เดินตามเส้นทางอัตโนมัติ (Auto Walk Loop)",
+   CurrentValue = false,
+   Flag = "PlayToggle",
+   Callback = function(Value)
+      IsPlaying = Value
+      if IsPlaying then
+         if #Waypoints == 0 then
+            Rayfield:Notify({
+               Title = "Warning",
+               Content = "ยังไม่มีจุดเดินที่บันทึกไว้!",
+               Duration = 3,
+               Image = 4483362458,
+            })
+            return
+         end
+
+         Rayfield:Notify({
+            Title = "Auto Walk",
+            Content = "เริ่มเดินตามจุดที่บันทึกไว้...",
+            Duration = 2,
+            Image = 4483362458,
+         })
+
+         task.spawn(function()
+            while IsPlaying do
+               for _, point in ipairs(Waypoints) do
+                  if not IsPlaying then break end
+                  
+                  local char = LocalPlayer.Character
+                  if char and char:FindFirstChild("Humanoid") then
+                     local humanoid = char.Humanoid
+                     humanoid:MoveTo(point)
+                     humanoid.MoveToFinished:Wait(5)
+                  end
+               end
+               task.wait(0.1)
+            end
+         end)
+      else
+         local char = LocalPlayer.Character
+         if char and char:FindFirstChild("Humanoid") and char:FindFirstChild("HumanoidRootPart") then
+            char.Humanoid:MoveTo(char.HumanoidRootPart.Position)
+         end
+      end
+   end,
+})
+
+TabAutoWalk:CreateButton({
+   Name = "🗑️ ลบข้อมูลจุดเดินทั้งหมด",
+   Callback = function()
+      Waypoints = {}
+      Rayfield:Notify({
+         Title = "Path Recorder",
+         Content = "ล้างข้อมูลเส้นทางเรียบร้อยแล้ว",
+         Duration = 2,
+         Image = 4483362458,
+      })
+   end,
+})
+
+--------------------------------------------------------------------------------
+-- หมวดหมู่ที่ 5: ยานพาหนะ และ แมพ (Boat & Utility)
+--------------------------------------------------------------------------------
+local TabUtility = Window:CreateTab("Utility & World", 4483362458)
+
+TabUtility:CreateSection("ระบบเรือและการสัญจร")
+
+TabUtility:CreateToggle({
+   Name = "เปิดใช้งาน Boat Speed",
+   CurrentValue = false,
+   Flag = "BoatSpeedToggle",
+   Callback = function(Value)
+      BOAT_ENABLED = Value
+      if BOAT_ENABLED then
+         if boatConnection then boatConnection:Disconnect() end
+         boatConnection = RunService.Heartbeat:Connect(function()
+            local seat = getSeat()
+            if seat then
+               seat.MaxSpeed = SPEED
+               seat.Torque = SPEED * 8
+               if seat.Occupant and seat.Throttle ~= 0 then
+                  seat.AssemblyLinearVelocity = seat.CFrame.LookVector * (SPEED * seat.Throttle)
+               end
+            end
+         end)
+      else
+         if boatConnection then
+            boatConnection:Disconnect()
+            boatConnection = nil
+         end
+      end
+   end,
+})
+
+TabUtility:CreateSlider({
+   Name = "ปรับความเร็วเรือ (Speed)",
+   Range = {50, 300},
+   Increment = 10,
+   Suffix = " Speed",
+   CurrentValue = 130,
+   Flag = "BoatSpeedSlider",
+   Callback = function(Value)
+      SPEED = Value
+   end,
+})
+
+TabUtility:CreateToggle({
+   Name = "เปิดใช้งาน เดินบนน้ำ (Water Walk)",
+   CurrentValue = false,
+   Flag = "WaterWalkToggle",
+   Callback = function(Value)
+      WATER_WALK_ENABLED = Value
+      
+      if WATER_WALK_ENABLED then
+         if not waterPart then
+            waterPart = Instance.new("Part")
+            waterPart.Size = Vector3.new(10, 1, 10)
+            waterPart.Transparency = 1
+            waterPart.Anchored = true
+            waterPart.CanCollide = true
+            waterPart.Name = "WaterWalkPlatform"
+            waterPart.Parent = workspace
+         end
+
+         if waterWalkConnection then waterWalkConnection:Disconnect() end
+         waterWalkConnection = RunService.RenderStepped:Connect(function()
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("HumanoidRootPart") then
+               local hrp = char.HumanoidRootPart
+               if hrp.Position.Y <= 3 then
+                  waterPart.Position = Vector3.new(hrp.Position.X, 0, hrp.Position.Z)
+                  waterPart.CanCollide = true
+               else
+                  waterPart.CanCollide = false
+               end
+            end
+         end)
+      else
+         if waterWalkConnection then
+            waterWalkConnection:Disconnect()
+            waterWalkConnection = nil
+         end
+         if waterPart then
+            waterPart:Destroy()
+            waterPart = nil
+         end
+      end
+   end,
+})
+
+TabUtility:CreateSection("ระบบปรับแต่งบรรยากาศ")
+
+TabUtility:CreateToggle({
+   Name = "เปิดใช้งาน ล็อกเวลาเช้า (Always Morning)",
+   CurrentValue = false,
+   Flag = "AlwaysMorningToggle",
+   Callback = function(Value)
+      MORNING_ENABLED = Value
+      if MORNING_ENABLED then
+         Lighting.ClockTime = MORNING_TIME
+         if morningConnection then morningConnection:Disconnect() end
+         morningConnection = RunService.RenderStepped:Connect(function()
+            if Lighting.ClockTime ~= MORNING_TIME then
+               Lighting.ClockTime = MORNING_TIME
+            end
+         end)
+      else
+         if morningConnection then
+            morningConnection:Disconnect()
+            morningConnection = nil
+         end
+      end
+   end,
+})
+
+-- ปุ่มลบสคริปต์
+TabUtility:CreateButton({
+   Name = "ลบสคริปต์ (Destroy UI)",
+   Callback = function()
+      BOAT_ENABLED = false
+      MORNING_ENABLED = false
+      WATER_WALK_ENABLED = false
+      
+      if boatConnection then boatConnection:Disconnect() end
+      if morningConnection then morningConnection:Disconnect() end
+      if waterWalkConnection me then waterWalkConnection:Disconnect() end
+      
+      if waterPart then
+         waterPart:Destroy()
+         waterPart = nil
+      end
+      
+      Rayfield:Destroy()
+   end,
+})
+
+-- แจ้งเตือนเมื่อสคริปต์โหลดเสร็จ
+Rayfield:Notify({
+   Title = "สำเร็จ!",
+   Content = "โหลดสคริปต์พร้อมระบบ Teleport Manager เรียบร้อยแล้ว",
+   Duration = 3,
+   Image = 44
